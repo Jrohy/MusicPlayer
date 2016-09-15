@@ -30,6 +30,7 @@ import com.example.john.musicplayer.utils.MusicListAdapter;
 import com.example.john.musicplayer.utils.MusicLoader;
 import com.example.john.musicplayer.utils.PlayerMsg;
 
+import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -105,7 +106,7 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             musicList = new MusicLoader(getContentResolver(), getApplicationContext()).getMusicList();
             listView.setAdapter(new MusicListAdapter(this, musicList));
         }
-        startService(new Intent(this, PlayService.class));
+        startService(new Intent(this, PlayService.class).putExtra("musicList", (Serializable) musicList));
     }
 
     @Override
@@ -237,27 +238,27 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
 
     @Override
     public void onStopTrackingTouch(SeekBar seekBar) {
+        progress = seekBar.getProgress();
         Intent intent = new Intent();
         intent.setPackage(getPackageName());
         intent.setAction(PlayerMsg.SEEK);
-        intent.putExtra("seekbar_progress", seekBar.getProgress());
+        intent.putExtra("seekbar_progress", progress);
         sendBroadcast(intent);
     }
 
     private void switchMusic() {
         seekBar.setMax(musicList.get(currentIndex).getDuration());
-        if (!isFirstPlay) {
-            seekBar.setProgress(0);
-        }
         endText.setText(new SimpleDateFormat(TIMEFORMAT, Locale.getDefault()).format(musicList.get(currentIndex).getDuration()));
         playButton.setImageResource(R.mipmap.ic_pause_white_24dp);
         Intent intent = new Intent();
         intent.setPackage(getPackageName());
-        intent.putExtra("title", musicList.get(currentIndex).getTitle());
-        intent.putExtra("artist", musicList.get(currentIndex).getArtist());
-        intent.putExtra("musicUrl", musicList.get(currentIndex).getUrl());
+        intent.putExtra("currentIndex", currentIndex);
         intent.setAction(PlayerMsg.SELECT);
         sendBroadcast(intent);
+
+        if (!isFirstPlay) {
+            seekBar.setProgress(0);
+        }
         isPlaying = true;
     }
 
@@ -271,8 +272,7 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
                     break;
                 case PlayerMsg.COMPLETE_MUSIC_BROADCAST:
                     if (!isFirstPlay) {
-                        if (++currentIndex >= musicList.size()) currentIndex = 0;
-                        switchMusic();
+                        currentIndex = intent.getIntExtra("currentIndex", 0);
                     }
                     break;
             }
